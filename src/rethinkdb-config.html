@@ -1,0 +1,58 @@
+<script type="text/javascript">
+  RED.nodes.registerType('rethinkdb config',{
+		category: 'config',
+    color: '#214753',
+    defaults: {
+      host: {
+        value: 'localhost'
+      },
+      port: {
+        value: 28015,
+				validate: RED.validators.number()
+      },
+      db: {
+        value: 'test'
+      },
+      authKey: {
+        value: ''
+      },
+      timeout: {
+        value: 20,
+				validate: RED.validators.number()
+      }
+    },
+    credentials: {
+      host: {type: 'text'},
+      port: {type: 'number'},
+      db: {type: 'text'},
+      authKey: {type: 'text'},
+      timeout: {type: 'number'}
+    },
+    label: function () {
+      return this.host + (this.port ? ':' + this.port : '') + '/' + this.db;
+    }
+  });
+</script>
+
+<script type="text/x-red" data-template-name="rethinkdb config">
+  <div class="form-row">
+    <label for="node-config-input-host"><i class="icon-globe"></i> Host</label>
+    <input type="text" id="node-config-input-host" placeholder="Host">
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-port"><i class="icon-globe"></i> Port</label>
+    <input type="text" id="node-config-input-port" placeholder="Port">
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-db"><i class="icon-database"></i> Database</label>
+    <input type="text" id="node-config-input-db" placeholder="Database">
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-authKey"><i class="icon-tag"></i> Auth key</label>
+    <input type="text" id="node-config-input-authKey" placeholder="Auth key">
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-timeout"><i class="icon-tag"></i> Timeout</label>
+    <input type="text" id="node-config-input-timeout" placeholder="Timeout">
+  </div>
+</script>

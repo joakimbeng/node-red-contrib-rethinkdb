@@ -1,0 +1,103 @@
+<script type="text/javascript">
+  RED.nodes.registerType('rethinkdb-in', {
+    category: 'rethinkdb',
+    color: '#3FADB5',
+    defaults: {
+      name: {
+        value: ''
+      },
+      rethinkdbConfig: {
+        type: 'rethinkdb config',
+        required: true
+      },
+      query: {
+        value: 'r.table(\'table\').insert(msg.payload);\n'
+      },
+      noerr: {
+        value: 0,
+        required: true,
+        validate: function(v) {
+          return !v || v === 0;
+        }
+      }
+    },
+    inputs: 1,
+    outputs: 0,
+    align: 'right',
+    icon: 'db.png',
+    label: function () {
+      return this.name || 'rethinkdb-in';
+    },
+    paletteLabel: 'rethinkdb-in',
+    oneditprepare: function() {
+      var that = this;
+
+      this.editor = RED.editor.createEditor({
+          id: 'node-input-query-editor',
+          mode: 'ace/mode/javascript',
+          value: $('#node-input-query').val()
+      });
+      //
+      // RED.library.create({
+      //     url:"functions", // where to get the data from
+      //     type:"function", // the type of object the library is for
+      //     editor:this.editor, // the field name the main text body goes to
+      //     mode:"ace/mode/javascript",
+      //     fields:['name','outputs']
+      // });
+      this.editor.focus();
+    },
+    oneditsave: function() {
+      var annot = this.editor.getSession().getAnnotations();
+      this.noerr = 0;
+      $("#node-input-noerr").val(0);
+      for (var k=0; k < annot.length; k++) {
+        if (annot[k].type === "error") {
+          $("#node-input-noerr").val(annot.length);
+          this.noerr = annot.length;
+        }
+      }
+      $("#node-input-query").val(this.editor.getValue());
+      delete this.editor;
+    },
+    oneditresize: function(size) {
+      var rows = $('#dialog-form > div:not(.node-text-editor-row)');
+      var height = $('#dialog-form').height();
+      for (var i=0; i < rows.size(); i++) {
+        height -= $(rows[i]).outerHeight(true);
+      }
+      var editorRow = $('#dialog-form > div.node-text-editor-row');
+      height -= parseInt(editorRow.css('marginTop'), 10) + parseInt(editorRow.css('marginBottom'), 10);
+      $('.node-text-editor').css('height', height + 'px');
+      this.editor.resize();
+    }
+  });
+</script>
+
+<script type="text/x-red" data-template-name="rethinkdb-in">
+  <div class="form-row">
+    <label for="node-input-rethinkdbConfig"><i class="icon-db"></i> RethinkDB</label>
+    <input type="text" id="node-input-rethinkdbConfig">
+  </div>
+  <div class="form-row" style="margin-bottom: 0px;">
+    <label for="node-input-query"><i class="fa fa-wrench"></i> Query</label>
+    <input type="hidden" id="node-input-query" autofocus="autofocus">
+    <input type="hidden" id="node-input-noerr">
+  </div>
+  <div class="form-row node-text-editor-row">
+    <div style="height: 250px;" class="node-text-editor" id="node-input-query-editor"></div>
+  </div>
+  <div class="form-row">
+    <label for="node-input-name"><i class="icon-tag"></i> Name</label>
+    <input type="text" id="node-input-name" placeholder="Name">
+  </div>
+</script>
+
+<script type="text/x-red" data-help-name="rethinkdb-in">
+  <p>
+    A RethinkDB input node. Suitable for writing data, e.g: <a href="https://www.rethinkdb.com/api/javascript/#insert"><code>insert()</code></a> queries.
+  </p>
+  <p>
+    You have access to the <code>msg</code> object inside your query.
+  </p>
+</script>
