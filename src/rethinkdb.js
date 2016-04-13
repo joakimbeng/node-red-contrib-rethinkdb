@@ -4,7 +4,7 @@ module.exports = exports = function (RED) {
 	const vm = require('vm');
 	const r = require('rethinkdb');
 
-	function RethinkdbOutNode(config) {
+	function RethinkdbNode(config) {
 		RED.nodes.createNode(this, config);
 		this.conf = RED.nodes.getNode(config.rethinkdbConfig);
 		if (!this.conf || !this.conf.credentials) {
@@ -70,54 +70,60 @@ module.exports = exports = function (RED) {
 				}
 			}
 		};
-		const context = vm.createContext(sandbox);
 		try {
 			const script = vm.createScript(`
-				const q = (function () {
+				const q = (function (msg) {
 					return ${config.query || null};
-				})();
+				})(msg);
 			`);
-			script.runInContext(context);
+			this.on('input', msg => {
+				const context = Object.assign({msg}, sandbox);
+				try {
+					script.runInNewContext(context);
+				} catch (err) {
+					this.status({fill: 'red', shape: 'dot', text: err.message});
+					this.error(err, msg);
+				}
+
+				if (context.q) {
+					this.connection
+						.then(conn => {
+							this.status({fill: 'yellow', shape: 'dot', text: 'Running query'});
+							return context.q.run(conn);
+						})
+						.then(cursor => {
+							this.status({fill: 'green', shape: 'dot', text: 'Waiting'});
+							if (typeof cursor.eachAsync !== 'function') {
+								this.status({fill: 'green', shape: 'ring', text: 'Sending data'});
+								this.send(Object.assign({}, msg, {payload: cursor}));
+								this.status({fill: 'green', shape: 'dot', text: 'Waiting'});
+								return null;
+							}
+							this.cursorToClose = cursor;
+							return cursor
+								.eachAsync(row => {
+									this.status({fill: 'green', shape: 'ring', text: 'Sending data'});
+									this.send(Object.assign({}, msg, {payload: row}));
+									this.status({fill: 'green', shape: 'dot', text: 'Waiting'});
+									return;
+								})
+								.then(() => {
+									this.status({fill: 'grey', shape: 'dot', text: 'Done'});
+									this.cursorToClose = null;
+								}, err => {
+									this.cursorToClose = null;
+									throw err;
+								});
+						})
+						.catch(err => {
+							this.status({fill: 'red', shape: 'dot', text: err.message});
+							this.error(err, msg);
+						});
+				}
+			});
 		} catch (err) {
-			this.status({fill: 'red', shape: 'dot', text: err.message});
 			this.error(err);
 		}
-
-		if (context.q) {
-			this.connection
-				.then(conn => {
-					this.status({fill: 'yellow', shape: 'dot', text: 'Running query'});
-					return context.q.run(conn);
-				})
-				.then(cursor => {
-					this.status({fill: 'green', shape: 'dot', text: 'Waiting'});
-					if (typeof cursor.eachAsync !== 'function') {
-						this.status({fill: 'green', shape: 'ring', text: 'Sending data'});
-						this.send({payload: cursor});
-						this.status({fill: 'green', shape: 'dot', text: 'Waiting'});
-						return null;
-					}
-					this.cursorToClose = cursor;
-					return cursor
-						.eachAsync(row => {
-							this.status({fill: 'green', shape: 'ring', text: 'Sending data'});
-							this.send({payload: row});
-							this.status({fill: 'green', shape: 'dot', text: 'Waiting'});
-							return;
-						})
-						.then(() => {
-							this.status({fill: 'grey', shape: 'dot', text: 'Done'});
-							this.cursorToClose = null;
-						}, err => {
-							this.cursorToClose = null;
-							throw err;
-						});
-				})
-				.catch(err => {
-					this.status({fill: 'red', shape: 'dot', text: err.message});
-					this.error(err);
-				});
-		}
 	}
-	RED.nodes.registerType('rethinkdb-out', RethinkdbOutNode);
+	RED.nodes.registerType('rethinkdb', RethinkdbNode);
 };
