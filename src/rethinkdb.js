@@ -11,18 +11,34 @@ module.exports = exports = function (RED) {
 			this.status({fill: 'red', shape: 'dot', text: 'Missing RethinkDB config'});
 			return;
 		}
-		this.status({fill: 'grey', shape: 'dot', text: 'Connecting'});
-		this.connection = r.connect(this.conf.credentials);
-		this.connection
-			.then(conn => {
-				this.conn = conn;
-				this.status({fill: 'green', shape: 'dot', text: 'Connected'});
-			})
-			.catch(err => {
-				this.conn = null;
-				this.status({fill: 'red', shape: 'dot', text: err.message});
-				this.error(err);
-			});
+		this.connection = () => {
+			if (this.conn) {
+				return Promise.resolve(this.conn);
+			}
+			this.status({fill: 'grey', shape: 'dot', text: 'Connecting'});
+			const connection = r.connect(this.conf.credentials);
+
+			connection
+				.then(conn => {
+					this.conn = conn;
+					conn.on('error', err => {
+						this.status({fill: 'red', shape: 'dot', text: err.message});
+						this.error(err);
+					});
+					conn.once('close', () => {
+						this.conn = null;
+						this.status({fill: 'grey', shape: 'dot', text: 'Closed'});
+					});
+					this.status({fill: 'green', shape: 'dot', text: 'Connected'});
+				})
+				.catch(err => {
+					this.conn = null;
+					this.status({fill: 'red', shape: 'dot', text: err.message});
+					this.error(err);
+				});
+
+			return connection;
+		};
 
 		this.on('close', done => {
 			this.status({fill: 'grey', shape: 'ring', text: 'Closed'});
@@ -30,7 +46,10 @@ module.exports = exports = function (RED) {
 				this.cursorToClose.close();
 			}
 			if (this.conn) {
-				this.conn.close(done);
+				this.conn.close(() => {
+					this.conn = null;
+					done();
+				});
 			} else {
 				done();
 			}
@@ -86,7 +105,7 @@ module.exports = exports = function (RED) {
 				}
 
 				if (context.q) {
-					this.connection
+					this.connection()
 						.then(conn => {
 							this.status({fill: 'yellow', shape: 'dot', text: 'Running query'});
 							return context.q.run(conn);
