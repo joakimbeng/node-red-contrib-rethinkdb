@@ -1,6 +1,6 @@
 {
   "name": "node-red-contrib-rethinkdb",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "WIP: A Node-RED RethinkDB node",
   "main": "src/rethinkdb-in.js",
   "directories": {
