@@ -10,6 +10,10 @@
         type: 'rethinkdb config',
         required: true
       },
+			asArray: {
+				type: 'boolean',
+				value: false
+			},
       query: {
         value: 'r.table(\'table\').filter(msg.payload);\n'
       },
@@ -86,6 +90,11 @@
   <div class="form-row node-text-editor-row">
     <div style="height: 250px;" class="node-text-editor" id="node-input-query-editor"></div>
   </div>
+	<div class="form-row">
+		<label for="node-input-asArray"><i class="fa fa-bars"></i> Array?</label>
+		<input type="checkbox" id="node-input-asArray" style="width: 32px;">
+		<small>Use RethinkDB&apos;s<code style="font-size: inherit;">cursor.toArray</code> instead of <code style="font-size: inherit;">cursor.eachAsync</code></small>
+	</div>
   <div class="form-row">
     <label for="node-input-name"><i class="icon-tag"></i> Name</label>
     <input type="text" id="node-input-name" placeholder="Name">

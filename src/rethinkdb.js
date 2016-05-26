@@ -3,6 +3,7 @@
 module.exports = exports = function (RED) {
 	const vm = require('vm');
 	const r = require('rethinkdb');
+	const createSandbox = require('./sandbox');
 
 	function RethinkdbNode(config) {
 		RED.nodes.createNode(this, config);
@@ -11,7 +12,11 @@ module.exports = exports = function (RED) {
 			this.status({fill: 'red', shape: 'dot', text: 'Missing RethinkDB config'});
 			return;
 		}
+		this.isClosing = false;
 		this.connection = () => {
+			if (this.isClosing) {
+				return Promise.reject(new Error('Flows are closing...'));
+			}
 			if (this.conn) {
 				return Promise.resolve(this.conn);
 			}
@@ -41,6 +46,7 @@ module.exports = exports = function (RED) {
 		};
 
 		this.on('close', done => {
+			this.isClosing = true;
 			this.status({fill: 'grey', shape: 'ring', text: 'Closed'});
 			if (this.cursorToClose) {
 				this.cursorToClose.close();
@@ -55,40 +61,10 @@ module.exports = exports = function (RED) {
 			}
 		});
 
-		const node = this;
-		const sandbox = {
-			r,
-			context: {
-				set: function () {
-					node.context().set.apply(node, arguments);
-				},
-				get: function () {
-					return node.context().get.apply(node, arguments);
-				},
-				get global() {
-					return node.context().global;
-				},
-				get flow() {
-					return node.context().flow;
-				}
-			},
-			flow: {
-				set: function () {
-					node.context().flow.set.apply(node, arguments);
-				},
-				get: function () {
-					return node.context().flow.get.apply(node, arguments);
-				}
-			},
-			global: {
-				set: function () {
-					node.context().global.set.apply(node, arguments);
-				},
-				get: function () {
-					return node.context().global.get.apply(node, arguments);
-				}
-			}
-		};
+		const sandbox = createSandbox(this);
+
+		const cursorMethod = config.asArray ? 'toArray' : 'eachAsync';
+
 		try {
 			const script = vm.createScript(`
 				const q = (function (msg) {
@@ -105,6 +81,13 @@ module.exports = exports = function (RED) {
 				}
 
 				if (context.q) {
+					const handleResult = result => {
+						this.status({fill: 'green', shape: 'ring', text: 'Sending data'});
+						this.send(Object.assign(msg, {payload: result}));
+						this.status({fill: 'green', shape: 'dot', text: 'Waiting'});
+						return;
+					};
+
 					this.connection()
 						.then(conn => {
 							this.status({fill: 'yellow', shape: 'dot', text: 'Running query'});
@@ -112,27 +95,24 @@ module.exports = exports = function (RED) {
 						})
 						.then(cursor => {
 							this.status({fill: 'green', shape: 'dot', text: 'Waiting'});
-							if (typeof cursor.eachAsync !== 'function') {
-								this.status({fill: 'green', shape: 'ring', text: 'Sending data'});
-								this.send(Object.assign({}, msg, {payload: cursor}));
-								this.status({fill: 'green', shape: 'dot', text: 'Waiting'});
-								return null;
+							if (typeof cursor[cursorMethod] !== 'function') {
+								return handleResult(cursor);
 							}
 							this.cursorToClose = cursor;
-							return cursor
-								.eachAsync(row => {
-									this.status({fill: 'green', shape: 'ring', text: 'Sending data'});
-									this.send(Object.assign({}, msg, {payload: row}));
-									this.status({fill: 'green', shape: 'dot', text: 'Waiting'});
-									return;
-								})
-								.then(() => {
-									this.status({fill: 'grey', shape: 'dot', text: 'Done'});
-									this.cursorToClose = null;
-								}, err => {
-									this.cursorToClose = null;
-									throw err;
-								});
+							let resultPromise;
+							if (config.asArray) {
+								resultPromise = cursor.toArray().then(handleResult);
+							} else {
+								resultPromise = cursor.eachAsync(handleResult);
+							}
+							return resultPromise
+							.then(() => {
+								this.status({fill: 'grey', shape: 'dot', text: 'Done'});
+								this.cursorToClose = null;
+							}, err => {
+								this.cursorToClose = null;
+								throw err;
+							});
 						})
 						.catch(err => {
 							this.status({fill: 'red', shape: 'dot', text: err.message});

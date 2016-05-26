@@ -3,6 +3,7 @@
 module.exports = exports = function (RED) {
 	const vm = require('vm');
 	const r = require('rethinkdb');
+	const createSandbox = require('./sandbox');
 
 	function RethinkdbInNode(config) {
 		RED.nodes.createNode(this, config);
@@ -33,40 +34,8 @@ module.exports = exports = function (RED) {
 			}
 		});
 
-		const node = this;
-		const sandbox = {
-			r,
-			context: {
-				set: function () {
-					node.context().set.apply(node, arguments);
-				},
-				get: function () {
-					return node.context().get.apply(node, arguments);
-				},
-				get global() {
-					return node.context().global;
-				},
-				get flow() {
-					return node.context().flow;
-				}
-			},
-			flow: {
-				set: function () {
-					node.context().flow.set.apply(node, arguments);
-				},
-				get: function () {
-					return node.context().flow.get.apply(node, arguments);
-				}
-			},
-			global: {
-				set: function () {
-					node.context().global.set.apply(node, arguments);
-				},
-				get: function () {
-					return node.context().global.get.apply(node, arguments);
-				}
-			}
-		};
+		const sandbox = createSandbox(this);
+
 		try {
 			const script = vm.createScript(`
 				const q = (function (msg) {
