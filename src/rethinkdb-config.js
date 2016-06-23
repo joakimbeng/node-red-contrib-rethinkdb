@@ -8,7 +8,8 @@ module.exports = exports = function (RED) {
 			host: {type: 'text'},
 			port: {type: 'text'},
 			db: {type: 'text'},
-			authKey: {type: 'text'},
+			user: {type: 'text'},
+			password: {type: 'text'},
 			timeout: {type: 'number'}
 		}
 	});

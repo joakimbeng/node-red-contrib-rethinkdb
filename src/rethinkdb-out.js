@@ -42,7 +42,7 @@ module.exports = exports = function (RED) {
 
 		try {
 			const script = vm.createScript(`
-				const q = (function () {
+				q = (function () {
 					return ${config.query || null};
 				})();
 			`);
