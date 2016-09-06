@@ -37,23 +37,22 @@ module.exports = exports = function (RED) {
 		const sandbox = createSandbox(this);
 
 		try {
-			const script = vm.createScript(`
-				const q = (function (msg) {
-					return ${config.query || null};
-				})(msg);
-			`);
+			const script = vm.createScript(`(function (msg) {
+				return ${config.query || null};
+			})(msg);`);
 			this.on('input', msg => {
 				const context = Object.assign({msg}, sandbox);
+				let query;
 				try {
-					script.runInNewContext(context);
+					query = script.runInNewContext(context);
 				} catch (err) {
 					this.error(err, msg);
 				}
-				if (context.q) {
+				if (query) {
 					this.connection
 						.then(conn => {
 							this.status({fill: 'yellow', shape: 'dot', text: 'Running query'});
-							return context.q.run(conn);
+							return query.run(conn);
 						})
 						.then(() => {
 							this.status({fill: 'green', shape: 'dot', text: 'Idle'});

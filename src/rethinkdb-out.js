@@ -39,14 +39,13 @@ module.exports = exports = function (RED) {
 
 		const sandbox = createSandbox(this);
 		const context = vm.createContext(sandbox);
+		let query;
 
 		try {
-			const script = vm.createScript(`
-				const q = (function () {
-					return ${config.query || null};
-				})();
-			`);
-			script.runInContext(context);
+			const script = vm.createScript(`(function () {
+				return ${config.query || null};
+			})();`);
+			query = script.runInContext(context);
 		} catch (err) {
 			this.status({fill: 'red', shape: 'dot', text: err.message});
 			this.error(err);
@@ -61,11 +60,11 @@ module.exports = exports = function (RED) {
 			return;
 		};
 
-		if (context.q) {
+		if (query) {
 			this.connection
 				.then(conn => {
 					this.status({fill: 'yellow', shape: 'dot', text: 'Running query'});
-					return context.q.run(conn);
+					return query.run(conn);
 				})
 				.then(cursor => {
 					this.status({fill: 'green', shape: 'dot', text: 'Waiting'});

@@ -66,21 +66,20 @@ module.exports = exports = function (RED) {
 		const cursorMethod = config.asArray ? 'toArray' : 'eachAsync';
 
 		try {
-			const script = vm.createScript(`
-				const q = (function (msg) {
-					return ${config.query || null};
-				})(msg);
-			`);
+			const script = vm.createScript(`(function (msg) {
+				return ${config.query || null};
+			})(msg);`);
 			this.on('input', msg => {
 				const context = Object.assign({msg}, sandbox);
+				let query;
 				try {
-					script.runInNewContext(context);
+					query = script.runInNewContext(context);
 				} catch (err) {
 					this.status({fill: 'red', shape: 'dot', text: err.message});
 					this.error(err, msg);
 				}
 
-				if (context.q) {
+				if (query) {
 					const handleResult = result => {
 						this.status({fill: 'green', shape: 'ring', text: 'Sending data'});
 						this.send(Object.assign(msg, {payload: result}));
@@ -91,7 +90,7 @@ module.exports = exports = function (RED) {
 					this.connection()
 						.then(conn => {
 							this.status({fill: 'yellow', shape: 'dot', text: 'Running query'});
-							return context.q.run(conn);
+							return query.run(conn);
 						})
 						.then(cursor => {
 							this.status({fill: 'green', shape: 'dot', text: 'Waiting'});
