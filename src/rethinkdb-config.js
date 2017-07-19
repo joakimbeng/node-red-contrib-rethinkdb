@@ -9,6 +9,8 @@ module.exports = exports = function (RED) {
 			port: {type: 'text'},
 			db: {type: 'text'},
 			authKey: {type: 'text'},
+			user: {type: 'text'},
+			password: {type: 'text'},
 			timeout: {type: 'number'}
 		}
 	});
