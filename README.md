@@ -1,4 +1,6 @@
-# node-red-contrib-rethinkdb
+# node-red-contrib-rdb
+
+> forked from joakimbeng/node-red-contrib-rethinkdb, add user & password settings
 
 [![Build status][travis-image]][travis-url] [![NPM version][npm-image]][npm-url] [![XO code style][codestyle-image]][codestyle-url]
 
