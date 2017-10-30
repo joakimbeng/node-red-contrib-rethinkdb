@@ -1,6 +1,6 @@
 <script type="text/javascript">
-  RED.nodes.registerType('rethinkdb config',{
-		category: 'config',
+  RED.nodes.registerType('rethinkdb config', {
+    category: 'config',
     color: '#214753',
     defaults: {
       host: {
@@ -8,7 +8,7 @@
       },
       port: {
         value: 28015,
-				validate: RED.validators.number()
+        validate: RED.validators.number()
       },
       db: {
         value: 'test'
@@ -16,22 +16,31 @@
       authKey: {
         value: ''
       },
+      user: {
+        value: ''
+      },
+      password: {
+        value: ''
+      },
       timeout: {
         value: 20,
-				validate: RED.validators.number()
+        validate: RED.validators.number()
       }
     },
     credentials: {
-      host: {type: 'text'},
-      port: {type: 'number'},
-      db: {type: 'text'},
-      authKey: {type: 'text'},
-      timeout: {type: 'number'}
+      host: { type: 'text' },
+      port: { type: 'number' },
+      db: { type: 'text' },
+      authKey: { type: 'text' },
+      user: { type: 'text' },
+      password: { type: 'text' },
+      timeout: { type: 'number' }
     },
     label: function () {
       return this.host + (this.port ? ':' + this.port : '') + '/' + this.db;
     }
   });
+
 </script>
 
 <script type="text/x-red" data-template-name="rethinkdb config">
@@ -50,6 +59,14 @@
   <div class="form-row">
     <label for="node-config-input-authKey"><i class="icon-tag"></i> Auth key</label>
     <input type="text" id="node-config-input-authKey" placeholder="Auth key">
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-user"><i class="icon-tag"></i> Username</label>
+    <input type="text" id="node-config-input-user" placeholder="Username">
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-password"><i class="icon-tag"></i> Password</label>
+    <input type="text" id="node-config-input-password" placeholder="Password">
   </div>
   <div class="form-row">
     <label for="node-config-input-timeout"><i class="icon-tag"></i> Timeout</label>
